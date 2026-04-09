@@ -5,6 +5,7 @@ import {
   getInvoice, saveInvoice, deleteInvoice, getCompanyInfo,
   createEmptyLineItem, createEmptyStyle,
   getCustomers, saveCustomer, createEmptyCustomer,
+  getSalesReps,
   SIZES, PRODUCT_TYPES, DECORATION_TYPES, PLACEMENTS, PAYMENT_METHODS, TERMS_OPTIONS, CATALOG_OPTIONS,
   calcStyleTotal, calcStyleQty, calcLineItemTotal, calcInvoiceTotals,
 } from '../utils/storage'
@@ -379,6 +380,7 @@ export default function InvoiceBuilder() {
   const [invoice, setInvoice] = useState(null)
   const [companyInfo, setCompanyInfo] = useState(null)
   const [customers, setCustomers] = useState([])
+  const [salesReps, setSalesReps] = useState([])
   const [saved, setSaved] = useState(false)
   const [newPayment, setNewPayment] = useState({ date: new Date().toISOString().split('T')[0], method: 'Bank Transfer', amount: '' })
   const [showPrint, setShowPrint] = useState(false)
@@ -390,6 +392,7 @@ export default function InvoiceBuilder() {
   useEffect(() => {
     getCompanyInfo().then(setCompanyInfo)
     getCustomers().then(setCustomers)
+    getSalesReps().then(setSalesReps)
     if (id) {
       getInvoice(id).then(inv => {
         if (inv) {
@@ -456,6 +459,12 @@ export default function InvoiceBuilder() {
 
   function updateSalesRep(updates) {
     updateInvoice({ salesRep: { ...invoice.salesRep, ...updates } })
+  }
+
+  function applySalesRep(repId) {
+    const rep = salesReps.find(r => r.id === repId)
+    if (!rep) return
+    updateInvoice({ salesRep: { name: rep.name || '', email: rep.email || '', phone: rep.phone || '' } })
   }
 
   function updateLineItem(idx, updated) {
@@ -605,6 +614,24 @@ export default function InvoiceBuilder() {
             {/* Middle: Sales rep */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: '#22c55e' }}>Sales Rep</h3>
+              {salesReps.length > 0 && (
+                <div className="relative">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#94a3b8' }}>
+                    <path strokeLinecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                  </svg>
+                  <select
+                    defaultValue=""
+                    onChange={e => { if (e.target.value) applySalesRep(e.target.value); e.target.value = '' }}
+                    className="w-full border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-sm bg-white focus:border-green-500 outline-none transition-colors appearance-none cursor-pointer"
+                    style={{ color: '#64748b' }}
+                  >
+                    <option value="" disabled>Select sales rep…</option>
+                    {[...salesReps].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <Input placeholder="Name" value={invoice.salesRep?.name} onChange={v => updateSalesRep({ name: v })} />
               <Input placeholder="Email" type="email" value={invoice.salesRep?.email} onChange={v => updateSalesRep({ email: v })} />
               <Input placeholder="Phone" value={invoice.salesRep?.phone} onChange={v => updateSalesRep({ phone: v })} />

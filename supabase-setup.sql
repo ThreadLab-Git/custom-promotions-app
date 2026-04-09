@@ -18,9 +18,31 @@ create table if not exists app_settings (
   value jsonb not null
 );
 
+-- Customers table
+create table if not exists customers (
+  id text primary key,
+  company text,
+  data jsonb not null,
+  created_at text,
+  updated_at text
+);
+
+-- Sales reps table
+create table if not exists sales_reps (
+  id text primary key,
+  name text,
+  data jsonb not null,
+  created_at text,
+  updated_at text
+);
+
 -- Allow public read/write (no auth required)
 alter table invoices enable row level security;
 alter table app_settings enable row level security;
+alter table customers enable row level security;
+alter table sales_reps enable row level security;
 
 create policy "Public access invoices" on invoices for all using (true) with check (true);
 create policy "Public access settings" on app_settings for all using (true) with check (true);
+create policy "Public access customers" on customers for all using (true) with check (true);
+create policy "Public access sales_reps" on sales_reps for all using (true) with check (true);

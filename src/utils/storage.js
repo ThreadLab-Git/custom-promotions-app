@@ -238,6 +238,62 @@ export function createEmptyCustomer() {
   }
 }
 
+// ─── Sales Rep CRUD ──────────────────────────────────────────────────────────
+
+export async function getSalesReps() {
+  if (isConfigured) {
+    const { data, error } = await supabase
+      .from('sales_reps')
+      .select('*')
+      .order('name', { ascending: true })
+    if (!error) return data.map(row => row.data)
+  }
+  return lsLoad().salesReps || []
+}
+
+export async function saveSalesRep(rep) {
+  if (isConfigured) {
+    const row = {
+      id: rep.id,
+      name: rep.name || '',
+      data: rep,
+      created_at: rep.createdAt,
+      updated_at: rep.updatedAt,
+    }
+    const { error } = await supabase.from('sales_reps').upsert(row, { onConflict: 'id' })
+    if (error) console.error('Supabase saveSalesRep error:', error)
+    return
+  }
+  const state = lsLoad()
+  if (!state.salesReps) state.salesReps = []
+  const idx = state.salesReps.findIndex(r => r.id === rep.id)
+  if (idx >= 0) state.salesReps[idx] = rep
+  else state.salesReps.unshift(rep)
+  lsSave(state)
+}
+
+export async function deleteSalesRep(id) {
+  if (isConfigured) {
+    const { error } = await supabase.from('sales_reps').delete().eq('id', id)
+    if (error) console.error('Supabase deleteSalesRep error:', error)
+    return
+  }
+  const state = lsLoad()
+  state.salesReps = (state.salesReps || []).filter(r => r.id !== id)
+  lsSave(state)
+}
+
+export function createEmptySalesRep() {
+  return {
+    id: crypto.randomUUID(),
+    name: '',
+    email: '',
+    phone: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+}
+
 // ─── Factories ────────────────────────────────────────────────────────────────
 
 export function createEmptyStyle() {

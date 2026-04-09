@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getInvoices, deleteInvoice, calcInvoiceTotals, getNextInvoiceNumber, createEmptyInvoice, saveInvoice, getCompanyInfo, saveCompanyInfo } from '../utils/storage'
+import { getInvoices, deleteInvoice, calcInvoiceTotals, getNextInvoiceNumber, createEmptyInvoice, saveInvoice, getCompanyInfo, saveCompanyInfo, getSalesReps, saveSalesRep, deleteSalesRep, createEmptySalesRep } from '../utils/storage'
 
 function fmt(n) {
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n || 0)
@@ -27,6 +27,9 @@ export default function Dashboard() {
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
   const [companyForm, setCompanyForm] = useState(null)
+  const [settingsTab, setSettingsTab] = useState('company')
+  const [salesReps, setSalesReps] = useState([])
+  const [repForm, setRepForm] = useState(null)
 
   useEffect(() => {
     getInvoices().then(setInvoices)
@@ -100,7 +103,14 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={async () => { setCompanyForm(await getCompanyInfo()); setShowSettings(true) }}
+              onClick={async () => {
+                const [info, reps] = await Promise.all([getCompanyInfo(), getSalesReps()])
+                setCompanyForm(info)
+                setSalesReps(reps)
+                setSettingsTab('company')
+                setRepForm(null)
+                setShowSettings(true)
+              }}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
               style={{ color: '#94a3a0', background: 'rgba(255,255,255,0.06)' }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
@@ -295,51 +305,185 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Company Settings */}
+      {/* Settings Modal */}
       {showSettings && companyForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-            <div className="px-6 py-4 flex items-center justify-between" style={{ background: '#0f1f1a' }}>
-              <h3 className="font-bold text-white">Company Settings</h3>
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: '85vh' }}>
+
+            {/* Header */}
+            <div className="px-6 py-4 flex items-center justify-between flex-shrink-0" style={{ background: '#0f1f1a' }}>
+              <h3 className="font-bold text-white">Settings</h3>
               <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-white transition-colors">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5"><path strokeLinecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
               </button>
             </div>
-            <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
-              {[
-                { label: 'Display Name (printed large on invoice)', key: 'displayName', placeholder: 'CITYWIDE UNIFORMS' },
-                { label: 'Legal Company Name', key: 'name', placeholder: 'CityWide Uniforms PTY LTD' },
-                { label: 'ACN', key: 'acn', placeholder: '91 692 026 547' },
-                { label: 'ABN', key: 'abn', placeholder: '' },
-                { label: 'Email', key: 'email', placeholder: 'hello@citywideuniforms.com.au' },
-                { label: 'Phone', key: 'phone', placeholder: '' },
-                { label: 'Address', key: 'address', placeholder: '' },
-                { label: 'Website', key: 'website', placeholder: '' },
-                { label: 'Bank Account Name', key: 'bankName', placeholder: 'Citywide Uniforms PTY LTD' },
-                { label: 'BSB', key: 'bsb', placeholder: '063-169' },
-                { label: 'Account Number', key: 'bankAccount', placeholder: '1089 7938' },
-              ].map(({ label, key, placeholder }) => (
-                <div key={key}>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label}</label>
-                  <input
-                    type="text"
-                    value={companyForm[key] || ''}
-                    onChange={e => setCompanyForm(f => ({ ...f, [key]: e.target.value }))}
-                    placeholder={placeholder}
-                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-green-500 transition-colors"
-                  />
-                </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-gray-100 flex-shrink-0 px-6 pt-3">
+              {[{ id: 'company', label: 'Company' }, { id: 'sales_reps', label: 'Sales Reps' }].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => { setSettingsTab(tab.id); setRepForm(null) }}
+                  className="mr-4 pb-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px"
+                  style={settingsTab === tab.id
+                    ? { color: '#22c55e', borderColor: '#22c55e' }
+                    : { color: '#94a3b8', borderColor: 'transparent' }}
+                >
+                  {tab.label}
+                </button>
               ))}
             </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end bg-gray-50">
-              <button onClick={() => setShowSettings(false)} className="px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-200 rounded-xl transition-colors">Cancel</button>
-              <button
-                onClick={async () => { await saveCompanyInfo(companyForm); setShowSettings(false) }}
-                className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors"
-                style={{ background: '#22c55e' }}
-              >
-                Save Settings
-              </button>
+
+            {/* Body */}
+            <div className="overflow-y-auto flex-1">
+
+              {/* Company tab */}
+              {settingsTab === 'company' && (
+                <div className="p-6 space-y-4">
+                  {[
+                    { label: 'Display Name (printed large on invoice)', key: 'displayName', placeholder: 'CITYWIDE UNIFORMS' },
+                    { label: 'Legal Company Name', key: 'name', placeholder: 'CityWide Uniforms PTY LTD' },
+                    { label: 'ACN', key: 'acn', placeholder: '91 692 026 547' },
+                    { label: 'ABN', key: 'abn', placeholder: '' },
+                    { label: 'Email', key: 'email', placeholder: 'hello@citywideuniforms.com.au' },
+                    { label: 'Phone', key: 'phone', placeholder: '' },
+                    { label: 'Address', key: 'address', placeholder: '' },
+                    { label: 'Website', key: 'website', placeholder: '' },
+                    { label: 'Bank Account Name', key: 'bankName', placeholder: 'Citywide Uniforms PTY LTD' },
+                    { label: 'BSB', key: 'bsb', placeholder: '063-169' },
+                    { label: 'Account Number', key: 'bankAccount', placeholder: '1089 7938' },
+                  ].map(({ label, key, placeholder }) => (
+                    <div key={key}>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label}</label>
+                      <input
+                        type="text"
+                        value={companyForm[key] || ''}
+                        onChange={e => setCompanyForm(f => ({ ...f, [key]: e.target.value }))}
+                        placeholder={placeholder}
+                        className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-green-500 transition-colors"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Sales Reps tab */}
+              {settingsTab === 'sales_reps' && (
+                <div className="p-6 space-y-4">
+                  {/* Rep list */}
+                  {salesReps.length === 0 && !repForm && (
+                    <p className="text-sm text-gray-400 text-center py-4">No sales reps yet. Add one below.</p>
+                  )}
+                  {salesReps.length > 0 && (
+                    <div className="space-y-2">
+                      {salesReps.map(rep => (
+                        <div key={rep.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 bg-gray-50 group">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-gray-900 truncate">{rep.name || <span className="text-gray-400">Unnamed</span>}</div>
+                            {(rep.email || rep.phone) && (
+                              <div className="text-xs text-gray-400 truncate mt-0.5">
+                                {[rep.email, rep.phone].filter(Boolean).join(' · ')}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => setRepForm({ ...rep })}
+                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white transition-all"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                              <path strokeLinecap="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                          </button>
+                          <button
+                            onClick={async () => {
+                              await deleteSalesRep(rep.id)
+                              setSalesReps(await getSalesReps())
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                              <path strokeLinecap="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add / Edit form */}
+                  {repForm ? (
+                    <div className="rounded-xl border border-green-200 bg-green-50/40 p-4 space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#22c55e' }}>
+                        {repForm.createdAt === repForm.updatedAt ? 'New Sales Rep' : 'Edit Sales Rep'}
+                      </p>
+                      {[
+                        { key: 'name', placeholder: 'Name', type: 'text' },
+                        { key: 'email', placeholder: 'Email', type: 'email' },
+                        { key: 'phone', placeholder: 'Phone', type: 'text' },
+                      ].map(({ key, placeholder, type }) => (
+                        <input
+                          key={key}
+                          type={type}
+                          placeholder={placeholder}
+                          value={repForm[key] || ''}
+                          onChange={e => setRepForm(f => ({ ...f, [key]: e.target.value }))}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:border-green-500 transition-colors"
+                        />
+                      ))}
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => setRepForm(null)}
+                          className="flex-1 px-3 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!repForm.name.trim()) return
+                            const rep = { ...repForm, updatedAt: new Date().toISOString() }
+                            await saveSalesRep(rep)
+                            setSalesReps(await getSalesReps())
+                            setRepForm(null)
+                          }}
+                          className="flex-1 px-3 py-2 text-sm font-semibold text-white rounded-lg transition-colors"
+                          style={{ background: '#22c55e' }}
+                        >
+                          Save Rep
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setRepForm(createEmptySalesRep())}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed text-sm font-medium transition-colors"
+                      style={{ borderColor: '#d1fae5', color: '#16a34a' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.background = 'rgba(34,197,94,0.04)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1fae5'; e.currentTarget.style.background = '' }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><path strokeLinecap="round" d="M12 4v16m8-8H4"/></svg>
+                      Add Sales Rep
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end bg-gray-50 flex-shrink-0">
+              {settingsTab === 'company' ? (
+                <>
+                  <button onClick={() => setShowSettings(false)} className="px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-200 rounded-xl transition-colors">Cancel</button>
+                  <button
+                    onClick={async () => { await saveCompanyInfo(companyForm); setShowSettings(false) }}
+                    className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors"
+                    style={{ background: '#22c55e' }}
+                  >
+                    Save Settings
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => setShowSettings(false)} className="px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-200 rounded-xl transition-colors">Done</button>
+              )}
             </div>
           </div>
         </div>
