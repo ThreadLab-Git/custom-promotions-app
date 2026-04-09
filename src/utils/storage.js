@@ -367,7 +367,12 @@ export function calcStyleQty(style) {
 
 export function calcLineItemTotal(item) {
   const gross = item.styles.reduce((sum, style) => sum + calcStyleTotal(style), 0)
-  return gross * (1 - (item.unitDiscount || 0) / 100)
+  const garmentTotal = gross * (1 - (item.unitDiscount || 0) / 100)
+  const itemQty = item.styles.reduce((sum, style) => sum + calcStyleQty(style), 0)
+  const decoTotal = (item.locations || [])
+    .filter(loc => loc.type && (parseFloat(loc.price) || 0) > 0)
+    .reduce((sum, loc) => sum + (parseFloat(loc.price) || 0), 0) * itemQty
+  return garmentTotal + decoTotal
 }
 
 export function calcInvoiceTotals(invoice) {

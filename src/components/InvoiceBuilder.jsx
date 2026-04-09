@@ -437,9 +437,9 @@ function LineItem({ item, index, onChange, onDelete, canDelete }) {
               const decoPriceTotal = totalDecoPrice * totalQty
               const decoMargin = decoPriceTotal > 0 ? ((decoPriceTotal - decoCostTotal) / decoPriceTotal * 100) : 0
               const garmentCost = item.styles.reduce((sum, s) => sum + Object.values(s.sizes).reduce((a, sz) => a + (sz.qty || 0) * (sz.cost || 0), 0), 0)
-              const garmentRevenue = calcLineItemTotal(item)
-              const totalCost = garmentCost + decoCostTotal * totalQty
-              const totalRevenue = garmentRevenue
+              const garmentRevenue = item.styles.reduce((sum, s) => sum + calcStyleTotal(s), 0) * (1 - (item.unitDiscount || 0) / 100)
+              const totalCost = garmentCost + decoCostTotal
+              const totalRevenue = garmentRevenue + decoPriceTotal
               const overallMargin = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue * 100) : 0
               return (
                 <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 space-y-2">
@@ -453,7 +453,9 @@ function LineItem({ item, index, onChange, onDelete, canDelete }) {
                     <div className="bg-white rounded-lg p-3 border border-gray-200">
                       <div className="text-gray-500 mb-1">Garment Margin</div>
                       <div className="font-semibold text-gray-900">{fmt(garmentRevenue - garmentCost)}</div>
-                      <div className={`text-xs font-medium mt-0.5 ${garmentRevenue > 0 && (garmentRevenue - garmentCost) / garmentRevenue * 100 >= 40 ? 'text-green-600' : garmentRevenue > 0 && (garmentRevenue - garmentCost) / garmentRevenue * 100 >= 20 ? 'text-amber-600' : 'text-red-500'}`}>{garmentRevenue > 0 ? (((garmentRevenue - garmentCost) / garmentRevenue) * 100).toFixed(1) : '0.0'}% margin</div>
+                      <div className={`text-xs font-medium mt-0.5 ${garmentRevenue > 0 && (garmentRevenue - garmentCost) / garmentRevenue * 100 >= 40 ? 'text-green-600' : garmentRevenue > 0 && (garmentRevenue - garmentCost) / garmentRevenue * 100 >= 20 ? 'text-amber-600' : 'text-red-500'}`}>
+                        {garmentRevenue > 0 ? (((garmentRevenue - garmentCost) / garmentRevenue) * 100).toFixed(1) : '0.0'}% margin
+                      </div>
                       <div className="text-gray-400 mt-1">Cost {fmt(garmentCost)} · Revenue {fmt(garmentRevenue)}</div>
                     </div>
                     <div className="bg-white rounded-lg p-3 border border-green-200">

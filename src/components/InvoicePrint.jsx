@@ -164,14 +164,35 @@ const InvoicePrint = forwardRef(function InvoicePrint({ invoice, companyInfo }, 
                       )
                     })}
 
-                    {/* Locations */}
-                    <div style={{ marginTop: '8px', color: '#555', lineHeight: '1.6' }}>
-                      {item.locations.filter(l => l.type).map((loc, i) => (
-                        <div key={loc.id}>
-                          {i === 0 ? `${loc.type} : Location : ${loc.placement}` : `Size : Location : ${loc.placement}`}
-                        </div>
-                      ))}
-                    </div>
+                    {/* Decoration Locations */}
+                    {item.locations.filter(l => l.type).length > 0 && (
+                      <table style={{ borderCollapse: 'collapse', fontSize: '10px', marginTop: '10px', width: '100%' }}>
+                        <thead>
+                          <tr style={{ background: '#f5f5f5' }}>
+                            <td style={{ border: '1px solid #ddd', padding: '3px 8px', fontWeight: 'bold', color: '#555' }}>DECORATION</td>
+                            <td style={{ border: '1px solid #ddd', padding: '3px 8px', fontWeight: 'bold', color: '#555' }}>PLACEMENT</td>
+                            <td style={{ border: '1px solid #ddd', padding: '3px 8px', fontWeight: 'bold', color: '#555', textAlign: 'center' }}>QTY</td>
+                            <td style={{ border: '1px solid #ddd', padding: '3px 8px', fontWeight: 'bold', color: '#555', textAlign: 'right' }}>PRICE/UNIT</td>
+                            <td style={{ border: '1px solid #ddd', padding: '3px 8px', fontWeight: 'bold', color: '#555', textAlign: 'right' }}>TOTAL</td>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {item.locations.filter(l => l.type).map(loc => (
+                            <tr key={loc.id}>
+                              <td style={{ border: '1px solid #ddd', padding: '3px 8px' }}>{loc.type}</td>
+                              <td style={{ border: '1px solid #ddd', padding: '3px 8px', color: '#666' }}>{loc.placement || '—'}</td>
+                              <td style={{ border: '1px solid #ddd', padding: '3px 8px', textAlign: 'center' }}>{itemQty}</td>
+                              <td style={{ border: '1px solid #ddd', padding: '3px 8px', textAlign: 'right' }}>
+                                {(parseFloat(loc.price) || 0) > 0 ? `$${parseFloat(loc.price).toFixed(2)}` : '—'}
+                              </td>
+                              <td style={{ border: '1px solid #ddd', padding: '3px 8px', textAlign: 'right', fontWeight: 'bold' }}>
+                                {(parseFloat(loc.price) || 0) > 0 ? fmt((parseFloat(loc.price) || 0) * itemQty) : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </td>
                   <td style={{ padding: '6px 8px', textAlign: 'center', verticalAlign: 'top', fontWeight: 'bold' }}>{itemQty}</td>
                   <td style={{ padding: '6px 8px', textAlign: 'center', verticalAlign: 'top' }}>Each</td>
