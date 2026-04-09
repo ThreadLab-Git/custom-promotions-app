@@ -6,7 +6,7 @@ import {
   createEmptyLineItem, createEmptyStyle,
   getCustomers, saveCustomer, createEmptyCustomer,
   getSalesReps,
-  SIZES, PRODUCT_TYPES, DECORATION_TYPES, PLACEMENTS, PAYMENT_METHODS, TERMS_OPTIONS, CATALOG_OPTIONS,
+  SIZES, ADULT_SIZES, KIDS_SIZES, getSizesForPreset, PRODUCT_TYPES, DECORATION_TYPES, PLACEMENTS, PAYMENT_METHODS, TERMS_OPTIONS, CATALOG_OPTIONS,
   calcStyleTotal, calcStyleQty, calcLineItemTotal, calcInvoiceTotals,
 } from '../utils/storage'
 import InvoicePrint from './InvoicePrint'
@@ -49,19 +49,30 @@ function Select({ label, value, onChange, options, className = '' }) {
 }
 
 function StyleGrid({ style, onChange, onCopy, onDelete, canDelete }) {
+  const sizePreset = style.sizePreset || 'adult'
+  const sizes = getSizesForPreset(sizePreset)
   const totalQty = calcStyleQty(style)
   const totalPrice = calcStyleTotal(style)
 
   function updateSize(sz, field, val) {
     const n = parseFloat(val) || 0
-    const updated = {
-      ...style,
-      sizes: {
-        ...style.sizes,
-        [sz]: { ...style.sizes[sz], [field]: n }
-      }
+    const current = style.sizes[sz] || { qty: 0, cost: 0, markup: 0, price: 0 }
+    const updated = { ...current, [field]: n }
+    if (field === 'cost' || field === 'markup') {
+      const cost = field === 'cost' ? n : (current.cost || 0)
+      const markup = field === 'markup' ? n : (current.markup || 0)
+      updated.price = parseFloat((cost * (1 + markup / 100)).toFixed(4))
     }
-    onChange(updated)
+    onChange({ ...style, sizes: { ...style.sizes, [sz]: updated } })
+  }
+
+  function changePreset(preset) {
+    const newSizes = getSizesForPreset(preset)
+    onChange({
+      ...style,
+      sizePreset: preset,
+      sizes: Object.fromEntries(newSizes.map(sz => [sz, { qty: 0, cost: 0, markup: 0, price: 0 }])),
+    })
   }
 
   return (
@@ -96,6 +107,16 @@ function StyleGrid({ style, onChange, onCopy, onDelete, canDelete }) {
           className="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-green-500 outline-none"
         />
         <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden mr-1">
+            <button
+              onClick={() => changePreset('adult')}
+              className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${sizePreset === 'adult' ? 'bg-green-500 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+            >Adult</button>
+            <button
+              onClick={() => changePreset('kids')}
+              className={`px-2.5 py-1.5 text-xs font-medium transition-colors border-l border-gray-200 ${sizePreset === 'kids' ? 'bg-green-500 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+            >Kids</button>
+          </div>
           <button onClick={onCopy} className="flex items-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 px-2 py-1.5 rounded-lg transition-colors">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
@@ -119,7 +140,7 @@ function StyleGrid({ style, onChange, onCopy, onDelete, canDelete }) {
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
               <td className="px-3 py-2 font-medium text-gray-500 w-24">Size</td>
-              {SIZES.map(sz => (
+              {sizes.map(sz => (
                 <td key={sz} className="px-2 py-2 text-center font-semibold text-gray-700 w-20">{sz}</td>
               ))}
               <td className="px-3 py-2 text-center font-semibold text-gray-700 w-20">Total</td>
@@ -129,7 +150,7 @@ function StyleGrid({ style, onChange, onCopy, onDelete, canDelete }) {
             {/* Quantity */}
             <tr>
               <td className="px-3 py-1.5 font-medium text-gray-500">Qty</td>
-              {SIZES.map(sz => (
+              {sizes.map(sz => (
                 <td key={sz} className="px-2 py-1.5">
                   <input
                     type="number"
@@ -146,7 +167,7 @@ function StyleGrid({ style, onChange, onCopy, onDelete, canDelete }) {
             {/* Item Cost */}
             <tr className="bg-gray-50/50">
               <td className="px-3 py-1.5 font-medium text-gray-500">Cost ($)</td>
-              {SIZES.map(sz => (
+              {sizes.map(sz => (
                 <td key={sz} className="px-2 py-1.5">
                   <input
                     type="number"
@@ -164,7 +185,7 @@ function StyleGrid({ style, onChange, onCopy, onDelete, canDelete }) {
             {/* Markup */}
             <tr>
               <td className="px-3 py-1.5 font-medium text-gray-500">Markup (%)</td>
-              {SIZES.map(sz => (
+              {sizes.map(sz => (
                 <td key={sz} className="px-2 py-1.5">
                   <input
                     type="number"
@@ -181,7 +202,7 @@ function StyleGrid({ style, onChange, onCopy, onDelete, canDelete }) {
             {/* Item Price */}
             <tr className="bg-gray-50/50">
               <td className="px-3 py-1.5 font-medium text-gray-500">Price ($)</td>
-              {SIZES.map(sz => (
+              {sizes.map(sz => (
                 <td key={sz} className="px-2 py-1.5">
                   <input
                     type="number"
@@ -199,7 +220,7 @@ function StyleGrid({ style, onChange, onCopy, onDelete, canDelete }) {
             {/* Line total */}
             <tr className="bg-green-50/30">
               <td className="px-3 py-1.5 font-semibold text-gray-700">Total ($)</td>
-              {SIZES.map(sz => {
+              {sizes.map(sz => {
                 const { qty, price } = style.sizes[sz]
                 const lineTotal = (qty || 0) * (price || 0)
                 return (
@@ -219,6 +240,7 @@ function StyleGrid({ style, onChange, onCopy, onDelete, canDelete }) {
 
 function LineItem({ item, index, onChange, onDelete, canDelete }) {
   const [collapsed, setCollapsed] = useState(false)
+  const [showLocationCosts, setShowLocationCosts] = useState(false)
   const total = calcLineItemTotal(item)
   const totalQty = item.styles.reduce((sum, s) => sum + calcStyleQty(s), 0)
 
@@ -345,28 +367,105 @@ function LineItem({ item, index, onChange, onDelete, canDelete }) {
 
           {/* Decoration Locations */}
           <div className="border border-gray-200 rounded-xl overflow-hidden">
-            <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
               <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Decoration Locations</h4>
+              <button
+                onClick={() => setShowLocationCosts(!showLocationCosts)}
+                className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${showLocationCosts ? 'bg-green-100 text-green-700' : 'text-gray-500 hover:bg-gray-100'}`}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
+                  <path strokeLinecap="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {showLocationCosts ? 'Hide Costs' : 'Show Costs'}
+              </button>
             </div>
+            {showLocationCosts && (
+              <div className="px-4 py-2 bg-blue-50/50 border-b border-gray-200 grid grid-cols-[5rem_11rem_10rem_1fr_1fr] gap-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <span></span>
+                <span>Type</span>
+                <span>Placement</span>
+                <span>Cost/unit ($)</span>
+                <span>Price/unit ($)</span>
+              </div>
+            )}
             <div className="divide-y divide-gray-100">
               {item.locations.map((loc, idx) => (
-                <div key={loc.id} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="text-xs font-medium text-gray-400 w-20 flex-shrink-0">Location {idx + 1}{idx === 0 && <span className="text-red-400">*</span>}</span>
+                <div key={loc.id} className={`flex items-center gap-3 px-4 py-2.5 ${showLocationCosts ? 'grid grid-cols-[5rem_11rem_10rem_1fr_1fr]' : ''}`}>
+                  <span className="text-xs font-medium text-gray-400 flex-shrink-0">Location {idx + 1}{idx === 0 && <span className="text-red-400">*</span>}</span>
                   <Select
                     value={loc.type}
                     onChange={v => updateLocation(idx, 'type', v)}
                     options={[{ value: '', label: 'No Item' }, ...DECORATION_TYPES]}
-                    className="w-44"
+                    className={showLocationCosts ? '' : 'w-44'}
                   />
                   <Select
                     value={loc.placement}
                     onChange={v => updateLocation(idx, 'placement', v)}
                     options={[{ value: '', label: 'N/A' }, ...PLACEMENTS]}
-                    className="w-40"
+                    className={showLocationCosts ? '' : 'w-40'}
                   />
+                  {showLocationCosts && (
+                    <>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={loc.cost || ''}
+                        onChange={e => updateLocation(idx, 'cost', parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                        className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-green-500 outline-none"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={loc.price || ''}
+                        onChange={e => updateLocation(idx, 'price', parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                        className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-green-500 outline-none"
+                      />
+                    </>
+                  )}
                 </div>
               ))}
             </div>
+            {showLocationCosts && (() => {
+              const activeLocations = item.locations.filter(loc => loc.type)
+              const totalDecoCost = activeLocations.reduce((sum, loc) => sum + (parseFloat(loc.cost) || 0), 0)
+              const totalDecoPrice = activeLocations.reduce((sum, loc) => sum + (parseFloat(loc.price) || 0), 0)
+              const decoCostTotal = totalDecoCost * totalQty
+              const decoPriceTotal = totalDecoPrice * totalQty
+              const decoMargin = decoPriceTotal > 0 ? ((decoPriceTotal - decoCostTotal) / decoPriceTotal * 100) : 0
+              const garmentCost = item.styles.reduce((sum, s) => sum + Object.values(s.sizes).reduce((a, sz) => a + (sz.qty || 0) * (sz.cost || 0), 0), 0)
+              const garmentRevenue = calcLineItemTotal(item)
+              const totalCost = garmentCost + decoCostTotal * totalQty
+              const totalRevenue = garmentRevenue
+              const overallMargin = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue * 100) : 0
+              return (
+                <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 space-y-2">
+                  <div className="grid grid-cols-3 gap-4 text-xs">
+                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                      <div className="text-gray-500 mb-1">Decoration Margin</div>
+                      <div className="font-semibold text-gray-900">{fmt(decoPriceTotal - decoCostTotal)}</div>
+                      <div className={`text-xs font-medium mt-0.5 ${decoMargin >= 40 ? 'text-green-600' : decoMargin >= 20 ? 'text-amber-600' : 'text-red-500'}`}>{decoMargin.toFixed(1)}% margin</div>
+                      <div className="text-gray-400 mt-1">Cost {fmt(decoCostTotal)} · Revenue {fmt(decoPriceTotal)}</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                      <div className="text-gray-500 mb-1">Garment Margin</div>
+                      <div className="font-semibold text-gray-900">{fmt(garmentRevenue - garmentCost)}</div>
+                      <div className={`text-xs font-medium mt-0.5 ${garmentRevenue > 0 && (garmentRevenue - garmentCost) / garmentRevenue * 100 >= 40 ? 'text-green-600' : garmentRevenue > 0 && (garmentRevenue - garmentCost) / garmentRevenue * 100 >= 20 ? 'text-amber-600' : 'text-red-500'}`}>{garmentRevenue > 0 ? (((garmentRevenue - garmentCost) / garmentRevenue) * 100).toFixed(1) : '0.0'}% margin</div>
+                      <div className="text-gray-400 mt-1">Cost {fmt(garmentCost)} · Revenue {fmt(garmentRevenue)}</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-green-200">
+                      <div className="text-gray-500 mb-1">Overall Margin</div>
+                      <div className="font-semibold text-gray-900">{fmt(totalRevenue - totalCost)}</div>
+                      <div className={`text-xs font-medium mt-0.5 ${overallMargin >= 40 ? 'text-green-600' : overallMargin >= 20 ? 'text-amber-600' : 'text-red-500'}`}>{overallMargin.toFixed(1)}% margin</div>
+                      <div className="text-gray-400 mt-1">Total cost {fmt(totalCost)} · {totalQty} units</div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}

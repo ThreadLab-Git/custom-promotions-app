@@ -2,7 +2,13 @@ import { supabase, isConfigured } from './supabase'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
+export const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
+export const KIDS_SIZES = ['4', '6', '8', '10', '12', '14', '16', '18']
+export const SIZES = ADULT_SIZES // kept for backward compatibility
+
+export function getSizesForPreset(preset) {
+  return preset === 'kids' ? KIDS_SIZES : ADULT_SIZES
+}
 
 export const PRODUCT_TYPES = [
   'Heat Transfer - Apparel',
@@ -296,14 +302,16 @@ export function createEmptySalesRep() {
 
 // ─── Factories ────────────────────────────────────────────────────────────────
 
-export function createEmptyStyle() {
+export function createEmptyStyle(sizePreset = 'adult') {
+  const sizes = getSizesForPreset(sizePreset)
   return {
     id: crypto.randomUUID(),
     catalog: 'Custom',
     product: '',
     partNumber: '',
     color: '',
-    sizes: Object.fromEntries(SIZES.map(sz => [sz, { qty: 0, cost: 0, markup: 0, price: 0 }])),
+    sizePreset,
+    sizes: Object.fromEntries(sizes.map(sz => [sz, { qty: 0, cost: 0, markup: 0, price: 0 }])),
   }
 }
 
@@ -317,11 +325,11 @@ export function createEmptyLineItem() {
     taxable: true,
     styles: [createEmptyStyle()],
     locations: [
-      { id: crypto.randomUUID(), type: 'Transfer - 1 Color', placement: 'Full Front' },
-      { id: crypto.randomUUID(), type: '', placement: '' },
-      { id: crypto.randomUUID(), type: '', placement: '' },
-      { id: crypto.randomUUID(), type: '', placement: '' },
-      { id: crypto.randomUUID(), type: '', placement: '' },
+      { id: crypto.randomUUID(), type: 'Transfer - 1 Color', placement: 'Full Front', cost: 0, price: 0 },
+      { id: crypto.randomUUID(), type: '', placement: '', cost: 0, price: 0 },
+      { id: crypto.randomUUID(), type: '', placement: '', cost: 0, price: 0 },
+      { id: crypto.randomUUID(), type: '', placement: '', cost: 0, price: 0 },
+      { id: crypto.randomUUID(), type: '', placement: '', cost: 0, price: 0 },
     ],
   }
 }
@@ -350,14 +358,11 @@ export async function createEmptyInvoice(invoiceNumber) {
 // ─── Calculators ──────────────────────────────────────────────────────────────
 
 export function calcStyleTotal(style) {
-  return SIZES.reduce((sum, sz) => {
-    const s = style.sizes[sz]
-    return sum + (s.qty * s.price)
-  }, 0)
+  return Object.values(style.sizes).reduce((sum, s) => sum + ((s.qty || 0) * (s.price || 0)), 0)
 }
 
 export function calcStyleQty(style) {
-  return SIZES.reduce((sum, sz) => sum + (style.sizes[sz].qty || 0), 0)
+  return Object.values(style.sizes).reduce((sum, s) => sum + (s.qty || 0), 0)
 }
 
 export function calcLineItemTotal(item) {

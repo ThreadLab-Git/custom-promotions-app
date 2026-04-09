@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import { SIZES, calcStyleTotal, calcStyleQty, calcLineItemTotal, calcInvoiceTotals } from '../utils/storage'
+import { SIZES, getSizesForPreset, calcStyleTotal, calcStyleQty, calcLineItemTotal, calcInvoiceTotals } from '../utils/storage'
 
 function fmt(n) {
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(n || 0)
@@ -100,11 +100,10 @@ const InvoicePrint = forwardRef(function InvoicePrint({ invoice, companyInfo }, 
         const itemQty = item.styles.reduce((sum, s) => sum + calcStyleQty(s), 0)
         const itemGst = itemTotal * 0.1
 
-        // Collect active sizes (any size with qty > 0)
-        const activeSizes = SIZES.filter(sz =>
-          item.styles.some(s => s.sizes[sz].qty > 0)
-        )
-        const displaySizes = activeSizes.length > 0 ? activeSizes : ['XS', 'M', 'L', 'XL', '5XL']
+        // Collect active sizes (any size with qty > 0), respecting per-style presets
+        const allSizes = [...new Set(item.styles.flatMap(s => getSizesForPreset(s.sizePreset || 'adult')))]
+        const activeSizes = allSizes.filter(sz => item.styles.some(s => (s.sizes[sz]?.qty || 0) > 0))
+        const displaySizes = activeSizes.length > 0 ? activeSizes : allSizes.slice(0, 5)
 
         return (
           <div key={item.id} style={{ marginBottom: '16px' }}>
@@ -149,13 +148,13 @@ const InvoicePrint = forwardRef(function InvoicePrint({ invoice, companyInfo }, 
                             <tbody>
                               <tr>
                                 {displaySizes.map(sz => (
-                                  <td key={sz} style={{ border: '1px solid #ddd', padding: '3px 8px', textAlign: 'center' }}>{style.sizes[sz].qty || 0}</td>
+                                  <td key={sz} style={{ border: '1px solid #ddd', padding: '3px 8px', textAlign: 'center' }}>{style.sizes[sz]?.qty || 0}</td>
                                 ))}
                               </tr>
                               <tr style={{ background: '#fafafa' }}>
                                 {displaySizes.map(sz => (
                                   <td key={sz} style={{ border: '1px solid #ddd', padding: '3px 8px', textAlign: 'center', color: '#555' }}>
-                                    {style.sizes[sz].price ? `$${style.sizes[sz].price.toFixed(2)}` : '$0.00'}
+                                    {style.sizes[sz]?.price ? `$${style.sizes[sz].price.toFixed(2)}` : '$0.00'}
                                   </td>
                                 ))}
                               </tr>
