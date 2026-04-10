@@ -43,17 +43,17 @@ export const CATALOG_OPTIONS = ['Custom', 'AS Colour', 'Gildan', 'Next Level', '
 // ─── Default company info ─────────────────────────────────────────────────────
 
 const DEFAULT_COMPANY = {
-  name: 'CityWide Uniforms PTY LTD',
-  displayName: 'CITYWIDE UNIFORMS',
+  name: 'Custom Promotions PTY LTD',
+  displayName: 'CUSTOM PROMOTIONS',
   address: '',
-  email: 'hello@citywideuniforms.com.au',
+  email: '',
   phone: '',
-  acn: '91 692 026 547',
+  acn: '',
   taxId: 'GST',
-  bankAccount: '1089 7938',
-  bsb: '063-169',
+  bankAccount: '',
+  bsb: '',
   website: '',
-  bankName: 'Citywide Uniforms PTY LTD',
+  bankName: 'Custom Promotions PTY LTD',
 }
 
 // ─── localStorage helpers (fallback) ─────────────────────────────────────────

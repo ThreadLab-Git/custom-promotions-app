@@ -228,7 +228,7 @@ export default function Reports() {
       <header style={{ background: '#0f1f1a' }}>
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <img src="/logo.svg" alt="Citywide Uniforms" style={{ height: '28px', width: 'auto' }} />
+            <img src="/logo.svg" alt="Custom Promotions" style={{ height: '28px', width: 'auto' }} />
             <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)' }}>
               <button
                 onClick={() => navigate('/')}

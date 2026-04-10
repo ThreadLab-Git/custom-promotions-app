@@ -517,7 +517,7 @@ export default function InvoiceBuilder() {
   if (!invoice || !companyInfo) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#0f1f1a' }}>
       <div className="flex flex-col items-center gap-4">
-        <img src="/logo.svg" alt="Citywide Uniforms" style={{ height: '28px', opacity: 0.6 }} />
+        <img src="/logo.svg" alt="Custom Promotions" style={{ height: '28px', opacity: 0.6 }} />
         <div className="text-sm" style={{ color: '#6b9e7a' }}>Loading invoice…</div>
       </div>
     </div>
@@ -630,7 +630,7 @@ export default function InvoiceBuilder() {
       <header className="sticky top-0 z-20 no-print" style={{ background: '#0f1f1a', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="max-w-6xl mx-auto px-6 py-3.5 flex items-center gap-4">
           <button onClick={() => navigate('/')} className="flex items-center gap-2 transition-opacity hover:opacity-70">
-            <img src="/logo.svg" alt="Citywide Uniforms" style={{ height: '22px', width: 'auto' }} />
+            <img src="/logo.svg" alt="Custom Promotions" style={{ height: '22px', width: 'auto' }} />
           </button>
           <span style={{ color: 'rgba(255,255,255,0.15)' }}>/</span>
           <span className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>Invoice #{invoice.invoiceNumber}</span>

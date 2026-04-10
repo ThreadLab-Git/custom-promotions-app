@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import confetti from 'canvas-confetti'
 import { getInvoices, deleteInvoice, calcInvoiceTotals, getNextInvoiceNumber, createEmptyInvoice, saveInvoice, getCompanyInfo, saveCompanyInfo, getSalesReps, saveSalesRep, deleteSalesRep, createEmptySalesRep } from '../utils/storage'
 
 function fmt(n) {
@@ -19,6 +20,99 @@ const STATUS_CONFIG = {
   unpaid:  { label: 'Unpaid',  cls: 'bg-rose-100 text-rose-600 ring-1 ring-rose-200' },
 }
 
+// ─── Easter Egg Constants ──────────────────────────────────────────────────────
+
+const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight']
+
+const MILESTONES = [
+  { threshold: 10000,  emoji: '💸', label: '$10,000', sub: 'First major milestone — the bag is growing!' },
+  { threshold: 20000,  emoji: '🤑', label: '$20,000', sub: "Double digits. Big D nods in approval." },
+  { threshold: 50000,  emoji: '🚀', label: '$50,000', sub: "Half way to six figures. Let's GOOOO!" },
+  { threshold: 100000, emoji: '🏆', label: '$100,000', sub: 'SIX FIGURES BABY. Ness is built different.' },
+]
+
+const QUOTES = [
+  "The best invoice is a paid invoice.",
+  "Hustle until your sales rep asks what you're on.",
+  "A job isn't done until the money hits.",
+  "You don't close deals. Deals close when you're this good.",
+  "Every great uniform starts with a great invoice.",
+  "Embroidery is temporary. Invoice numbers are forever.",
+  "Chase the bag, not the vibes.",
+  "Be the energy you want to see on the remittance advice.",
+  "Sleep is for people who haven't hit their sales target yet.",
+]
+
+// ─── Milestone Modal ───────────────────────────────────────────────────────────
+
+function MilestoneModal({ milestone, onClose }) {
+  const fired = useRef(false)
+
+  useEffect(() => {
+    if (fired.current) return
+    fired.current = true
+    const colors = ['#fbbf24', '#f59e0b', '#fcd34d', '#ffffff', '#22c55e', '#a78bfa']
+    confetti({ particleCount: 100, spread: 120, origin: { x: 0.3, y: 0.45 }, colors, zIndex: 9999 })
+    confetti({ particleCount: 100, spread: 120, origin: { x: 0.7, y: 0.45 }, colors, zIndex: 9999 })
+    setTimeout(() => confetti({ particleCount: 180, spread: 90, origin: { x: 0.5, y: 0.5 }, colors, zIndex: 9999 }), 450)
+    const t = setTimeout(onClose, 6000)
+    return () => clearTimeout(t)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}
+      onClick={onClose}
+    >
+      <style>{`
+        @keyframes msPopIn { from { opacity:0; transform:scale(0.6) translateY(30px) } to { opacity:1; transform:scale(1) translateY(0) } }
+        @keyframes msSpin { 0%{transform:rotate(-20deg) scale(1)} 25%{transform:rotate(20deg) scale(1.25)} 75%{transform:rotate(-10deg) scale(1.25)} 100%{transform:rotate(0deg) scale(1)} }
+        @keyframes msFadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+      `}</style>
+      <div
+        className="relative text-center px-12 py-10 rounded-3xl max-w-sm w-full mx-4"
+        style={{
+          background: 'linear-gradient(145deg, #150f00, #0f1f1a)',
+          border: '1px solid rgba(251,191,36,0.45)',
+          boxShadow: '0 0 80px rgba(251,191,36,0.25), 0 24px 64px rgba(0,0,0,0.6)',
+          animation: 'msPopIn 0.45s cubic-bezier(0.34,1.56,0.64,1)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="text-6xl mb-3 inline-block" style={{ animation: 'msSpin 0.9s ease 0.2s 1' }}>
+          {milestone.emoji}
+        </div>
+        <div className="text-4xl font-black text-white mb-1" style={{ animation: 'msFadeUp 0.4s ease 0.3s both', letterSpacing: '-1px' }}>
+          {milestone.label}
+        </div>
+        <div className="text-base font-semibold mb-1" style={{ color: '#fbbf24', animation: 'msFadeUp 0.4s ease 0.4s both' }}>
+          Total Revenue Milestone!
+        </div>
+        <div className="text-sm mb-7" style={{ color: '#8fbfa4', animation: 'msFadeUp 0.4s ease 0.5s both', lineHeight: 1.5 }}>
+          {milestone.sub}
+        </div>
+        <button
+          onClick={onClose}
+          className="px-8 py-2.5 rounded-xl text-sm font-bold transition-all"
+          style={{
+            background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+            color: '#78350f',
+            boxShadow: '0 4px 16px rgba(251,191,36,0.45)',
+            animation: 'msFadeUp 0.4s ease 0.6s both',
+          }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+        >
+          Let's keep going! 🚀
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Dashboard ─────────────────────────────────────────────────────────────────
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const [invoices, setInvoices] = useState([])
@@ -31,8 +125,34 @@ export default function Dashboard() {
   const [salesReps, setSalesReps] = useState([])
   const [repForm, setRepForm] = useState(null)
 
+  // Easter egg state
+  const [funMode, setFunMode] = useState(false)
+  const [logoToast, setLogoToast] = useState(null)
+  const [milestoneCelebration, setMilestoneCelebration] = useState(null)
+  const [allPaidGlow, setAllPaidGlow] = useState(false)
+
+  // Easter egg refs
+  const konamiRef = useRef([])
+  const logoClicksRef = useRef([])
+  const prevAllPaidRef = useRef(false)
+  const celebratedRef = useRef(null)
+
   useEffect(() => {
     getInvoices().then(setInvoices)
+  }, [])
+
+  // Konami code: ↑↑↓↓←→←→ → Fun Mode
+  useEffect(() => {
+    function onKey(e) {
+      const seq = [...konamiRef.current, e.key].slice(-8)
+      konamiRef.current = seq
+      if (seq.join(',') === KONAMI.join(',')) {
+        konamiRef.current = []
+        setFunMode(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   async function handleNewInvoice() {
@@ -54,7 +174,20 @@ export default function Dashboard() {
     setDeleteConfirm(null)
   }
 
-  const filtered = invoices.filter(inv => {
+  // Logo click counter — 7 rapid clicks = secret quote
+  function handleLogoClick() {
+    const now = Date.now()
+    const recent = [...logoClicksRef.current, now].filter(t => now - t < 2000)
+    logoClicksRef.current = recent
+    if (recent.length >= 7) {
+      logoClicksRef.current = []
+      const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)]
+      setLogoToast(quote)
+      setTimeout(() => setLogoToast(null), 5500)
+    }
+  }
+
+  const filtered = useMemo(() => invoices.filter(inv => {
     const matchFilter = filter === 'all' || inv.status === filter
     const q = search.toLowerCase()
     const matchSearch = !q ||
@@ -62,7 +195,7 @@ export default function Dashboard() {
       inv.customer?.company?.toLowerCase().includes(q) ||
       inv.customer?.contactName?.toLowerCase().includes(q)
     return matchFilter && matchSearch
-  })
+  }), [invoices, filter, search])
 
   const counts = { all: invoices.length, paid: 0, partial: 0, unpaid: 0 }
   invoices.forEach(inv => { counts[inv.status] = (counts[inv.status] || 0) + 1 })
@@ -72,7 +205,6 @@ export default function Dashboard() {
     const { balance } = calcInvoiceTotals(inv)
     return sum + (balance > 0 ? balance : 0)
   }, 0)
-  const avgInvoice = invoices.length > 0 ? totalRevenue / invoices.length : 0
   const now = new Date()
   const thisMonthRevenue = invoices
     .filter(inv => {
@@ -90,14 +222,157 @@ export default function Dashboard() {
     })
     .reduce((sum, inv) => sum + calcInvoiceTotals(inv).total, 0)
 
+  // Milestone tracking — fires once per threshold, stored in localStorage
+  useEffect(() => {
+    if (invoices.length === 0) return
+    if (celebratedRef.current === null) {
+      celebratedRef.current = JSON.parse(localStorage.getItem('invoice_milestones') || '[]')
+    }
+    const celebrated = celebratedRef.current
+    const hit = MILESTONES.filter(m => totalRevenue >= m.threshold && !celebrated.includes(m.threshold))
+    if (hit.length > 0) {
+      const highest = hit.reduce((a, b) => a.threshold > b.threshold ? a : b)
+      celebratedRef.current = [...celebrated, ...hit.map(m => m.threshold)]
+      localStorage.setItem('invoice_milestones', JSON.stringify(celebratedRef.current))
+      setMilestoneCelebration(highest)
+    }
+  }, [totalRevenue, invoices.length])
+
+  // All-paid golden moment — triggers on transition to all-paid
+  const allPaid = filtered.length > 0 && filtered.every(inv => inv.status === 'paid')
+  useEffect(() => {
+    if (allPaid && !prevAllPaidRef.current) {
+      setAllPaidGlow(true)
+      setTimeout(() => setAllPaidGlow(false), 4500)
+    }
+    prevAllPaidRef.current = allPaid
+  }, [allPaid])
+
+  // Overdue Monster: unpaid/partial invoices 30+ days past due date
+  function isHaunted(inv) {
+    if (inv.status === 'paid') return false
+    const dateStr = inv.dueDate || inv.invoiceDate
+    if (!dateStr) return false
+    return (now - new Date(dateStr + 'T00:00:00')) > 30 * 24 * 60 * 60 * 1000
+  }
+
   return (
-    <div className="min-h-screen" style={{ background: '#f1f5f4' }}>
+    <div
+      className="min-h-screen"
+      style={{
+        background: allPaidGlow ? '#fffbeb' : '#f1f5f4',
+        transition: 'background 1.2s ease',
+      }}
+    >
+      {/* Global easter egg styles */}
+      <style>{`
+        @keyframes ghostBob { 0%,100%{transform:translateY(0) rotate(-5deg)} 50%{transform:translateY(-5px) rotate(5deg)} }
+        @keyframes statusPulse { 0%,100%{box-shadow:0 0 0 0 rgba(244,63,94,0)} 50%{box-shadow:0 0 0 4px rgba(244,63,94,0.25)} }
+        @keyframes allPaidSlide { 0%{opacity:0;transform:translateY(-16px)} 15%{opacity:1;transform:translateY(0)} 80%{opacity:1} 100%{opacity:0;transform:translateY(-8px)} }
+        @keyframes logoToastFade { from{opacity:0;transform:translateX(-50%) translateY(8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+        @keyframes funFloat { 0%{transform:translateY(100vh) rotate(0deg);opacity:0.9} 100%{transform:translateY(-80px) rotate(360deg);opacity:0} }
+        @keyframes rainbowGlow { 0%{box-shadow:0 3px 20px rgba(255,80,80,0.5)} 16%{box-shadow:0 3px 20px rgba(255,180,0,0.5)} 33%{box-shadow:0 3px 20px rgba(80,255,80,0.5)} 50%{box-shadow:0 3px 20px rgba(0,180,255,0.5)} 66%{box-shadow:0 3px 20px rgba(160,0,255,0.5)} 83%{box-shadow:0 3px 20px rgba(255,0,160,0.5)} 100%{box-shadow:0 3px 20px rgba(255,80,80,0.5)} }
+        @keyframes logoWiggle { 0%,100%{transform:rotate(0deg)} 25%{transform:rotate(-8deg)} 75%{transform:rotate(8deg)} }
+        @keyframes funPillFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+      `}</style>
+
+      {/* Fun Mode overlays */}
+      {funMode && (
+        <>
+          {['💰','🤑','💵','✨','💸','🏆','🎉','💰','🤑','💵'].map((emoji, i) => (
+            <div
+              key={i}
+              className="fixed pointer-events-none z-10 text-2xl select-none"
+              style={{
+                left: `${(i * 11 + 4) % 96}%`,
+                bottom: '-40px',
+                animation: `funFloat ${3.5 + (i % 3) * 0.7}s linear ${(i * 0.45) % 3.5}s infinite`,
+              }}
+            >
+              {emoji}
+            </div>
+          ))}
+          <div
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-5 py-3 rounded-2xl text-sm font-bold shadow-2xl select-none"
+            style={{
+              background: 'linear-gradient(135deg, #7c3aed, #db2777)',
+              color: '#fff',
+              boxShadow: '0 8px 32px rgba(124,58,237,0.55)',
+              animation: 'funPillFloat 3s ease-in-out infinite',
+            }}
+          >
+            <span>🎮 Fun Mode</span>
+            <button
+              onClick={() => setFunMode(false)}
+              className="w-5 h-5 rounded-full text-xs font-black flex items-center justify-center transition-opacity hover:opacity-70"
+              style={{ background: 'rgba(255,255,255,0.22)' }}
+              title="Deactivate Fun Mode"
+            >
+              ✕
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* All Paid golden banner */}
+      {allPaidGlow && (
+        <div
+          className="fixed top-5 left-1/2 z-50 px-8 py-3 rounded-2xl font-bold text-base shadow-2xl whitespace-nowrap pointer-events-none"
+          style={{
+            transform: 'translateX(-50%)',
+            background: 'linear-gradient(135deg, #f59e0b, #fbbf24, #fcd34d)',
+            color: '#451a03',
+            boxShadow: '0 8px 40px rgba(251,191,36,0.55)',
+            animation: 'allPaidSlide 4.5s ease forwards',
+          }}
+        >
+          All invoices paid! Ness is making cash 🤑💰
+        </div>
+      )}
+
+      {/* Logo click toast */}
+      {logoToast && (
+        <div
+          className="fixed top-20 left-1/2 z-50 max-w-xs w-full px-5 py-4 rounded-2xl shadow-2xl text-center"
+          style={{
+            transform: 'translateX(-50%)',
+            background: '#0f1f1a',
+            border: '1px solid rgba(34,197,94,0.3)',
+            animation: 'logoToastFade 0.35s ease',
+          }}
+        >
+          <div className="text-sm italic text-white leading-snug mb-2">"{logoToast}"</div>
+          <div className="text-xs font-bold" style={{ color: '#22c55e' }}>— Daniel Trkulja AKA Big D</div>
+        </div>
+      )}
+
+      {/* Milestone celebration modal */}
+      {milestoneCelebration && (
+        <MilestoneModal milestone={milestoneCelebration} onClose={() => setMilestoneCelebration(null)} />
+      )}
 
       {/* Header */}
-      <header style={{ background: '#0f1f1a' }}>
+      <header
+        style={{ background: '#0f1f1a' }}
+        className={funMode ? 'rainbowGlow' : ''}
+      >
+        {funMode && (
+          <style>{`.rainbowGlow { animation: rainbowGlow 2s linear infinite !important; }`}</style>
+        )}
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <img src="/logo.svg" alt="Citywide Uniforms" style={{ height: '28px', width: 'auto' }} />
+            <img
+              src="/logo.svg"
+              alt="Custom Promotions"
+              style={{
+                height: '28px',
+                width: 'auto',
+                cursor: 'pointer',
+                animation: funMode ? 'logoWiggle 0.6s ease-in-out infinite' : 'none',
+              }}
+              onClick={handleLogoClick}
+              title="Click me..."
+            />
             {/* Nav tabs */}
             <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)' }}>
               <button
@@ -233,7 +508,14 @@ export default function Dashboard() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
+        <div
+          className="bg-white rounded-2xl overflow-hidden shadow-sm"
+          style={{
+            border: allPaidGlow ? '1.5px solid rgba(251,191,36,0.6)' : '1px solid rgba(0,0,0,0.07)',
+            boxShadow: allPaidGlow ? '0 0 40px rgba(251,191,36,0.15)' : '',
+            transition: 'border 1s ease, box-shadow 1s ease',
+          }}
+        >
           {filtered.length === 0 ? (
             <div className="text-center py-20">
               <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: '#f1f5f4' }}>
@@ -266,6 +548,7 @@ export default function Dashboard() {
                 {filtered.map((inv, rowIdx) => {
                   const { total, paid, balance } = calcInvoiceTotals(inv)
                   const statusCfg = STATUS_CONFIG[inv.status] || STATUS_CONFIG.unpaid
+                  const haunted = isHaunted(inv)
                   return (
                     <tr
                       key={inv.id}
@@ -287,9 +570,23 @@ export default function Dashboard() {
                       <td className="px-4 py-4 text-right font-mono text-sm font-medium" style={{ color: paid > 0 ? '#16a34a' : '#94a3b8' }}>{fmtFull(paid)}</td>
                       <td className="px-4 py-4 text-right font-mono text-sm font-bold" style={{ color: balance > 0 ? '#0f1f1a' : '#16a34a' }}>{fmtFull(balance)}</td>
                       <td className="px-4 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusCfg.cls}`}>
-                          {statusCfg.label}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusCfg.cls}`}
+                            style={haunted ? { animation: 'statusPulse 2.5s ease-in-out infinite' } : {}}
+                          >
+                            {statusCfg.label}
+                          </span>
+                          {haunted && (
+                            <span
+                              title="This one haunts you..."
+                              className="cursor-help select-none"
+                              style={{ fontSize: '14px', animation: 'ghostBob 2.2s ease-in-out infinite' }}
+                            >
+                              👻
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-4">
                         <button
@@ -369,11 +666,11 @@ export default function Dashboard() {
                     { label: 'Legal Company Name', key: 'name', placeholder: 'CityWide Uniforms PTY LTD' },
                     { label: 'ACN', key: 'acn', placeholder: '91 692 026 547' },
                     { label: 'ABN', key: 'abn', placeholder: '' },
-                    { label: 'Email', key: 'email', placeholder: 'hello@citywideuniforms.com.au' },
+                    { label: 'Email', key: 'email', placeholder: 'hello@custompromotions.com.au' },
                     { label: 'Phone', key: 'phone', placeholder: '' },
                     { label: 'Address', key: 'address', placeholder: '' },
                     { label: 'Website', key: 'website', placeholder: '' },
-                    { label: 'Bank Account Name', key: 'bankName', placeholder: 'Citywide Uniforms PTY LTD' },
+                    { label: 'Bank Account Name', key: 'bankName', placeholder: 'Custom Promotions PTY LTD' },
                     { label: 'BSB', key: 'bsb', placeholder: '063-169' },
                     { label: 'Account Number', key: 'bankAccount', placeholder: '1089 7938' },
                   ].map(({ label, key, placeholder }) => (
